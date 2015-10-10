@@ -29,17 +29,22 @@ class CnbetaSpider(scrapy.Spider):
     def parse(self, response):
         print '===length:%s===' % len(response.body)
         print '===message:%s===' % response.status
+
+        #获取列表页各新闻条目(title及url),用于获取新闻详情
         listItems = self.parse_list_page(response)
         for item in listItems:
             print item
             yield scrapy.Request(item['url'], meta = self.meta, headers = self.headers, callback = self.parse_article)
 
+        #获取列表下页的url，并进行抓取
         for href in response.xpath('//div[@class="pages"]/a[@class="page-next"]/@href'):
             url = response.urljoin(href.extract())
             yield scrapy.Request(url, meta = self.meta, headers = self.headers, callback = self.parse)
 
     def parse_list_page(self,response):
         items = []
+
+        #从列表中解析出新闻title及url
         for sel in response.xpath('//div[@class="list"]/a'):
             title = sel.xpath('span[1]/text() | text()').extract()[0].encode('utf-8')
             url = sel.xpath('@href').extract()[0].encode('utf-8')
@@ -48,6 +53,7 @@ class CnbetaSpider(scrapy.Spider):
         return items
 
     def parse_article(self,response):
+        #从新闻详情中解析出新闻各个字段
         title = response.xpath('//div[@class="title"]/b[1]/text()').extract()[0].encode('utf-8').strip()
         time = response.xpath('//div[@class="time"]/span[1]/text()').extract()[0].encode('utf-8').replace('发布日期:','').strip()
         source = response.xpath('//div[@class="time"]/span[2]/a[1]/text() | //div[@class="time"]/span[2]/text()').extract()
